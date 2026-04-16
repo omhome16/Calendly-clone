@@ -1,9 +1,7 @@
 # backend/app/routers/notifications.py
-"""Email notification endpoints. Supports SMTP via .env or falls back to console logging."""
+"""Email notification endpoints. Uses Resend API via HTTP to bypass SMTP port blocking."""
 import os
-import smtplib
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
+import httpx
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
@@ -15,13 +13,9 @@ from .. import crud
 router = APIRouter(prefix="/api/notifications", tags=["Notifications"])
 logger = logging.getLogger(__name__)
 
-# SMTP config from environment
-SMTP_HOST = os.getenv("SMTP_HOST", "")
-SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
-SMTP_USER = os.getenv("SMTP_USER", "")
-SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "").replace(" ", "")  # Strip spaces from app passwords
-SMTP_FROM = os.getenv("SMTP_FROM", "")
-SMTP_ENABLED = bool(SMTP_HOST and SMTP_USER and SMTP_PASSWORD)
+# Resend API config from environment
+RESEND_API_KEY = os.getenv("RESEND_API_KEY", "")
+EMAIL_ENABLED = bool(RESEND_API_KEY)
 
 
 class NotificationPayload(BaseModel):
@@ -30,31 +24,39 @@ class NotificationPayload(BaseModel):
 
 
 def send_email(to_email: str, subject: str, body: str) -> dict:
-    """Send email via SMTP. Returns a dict with status and any error details."""
-    if not SMTP_ENABLED:
-        logger.info(f"\n{'='*50}\nEMAIL (SMTP not configured - logged to console)\nTo: {to_email}\nSubject: {subject}\n{'-'*50}\n{body}\n{'='*50}")
+    """Send email via Resend HTTP API. Returns a dict with status and any error details."""
+    if not EMAIL_ENABLED:
+        logger.info(f"\n{'='*50}\nEMAIL (Resend not configured - logged to console)\nTo: {to_email}\nSubject: {subject}\n{'-'*50}\n{body}\n{'='*50}")
         return {"sent": False, "error": None}
 
     try:
-        msg = MIMEMultipart("alternative")
-        msg["From"] = SMTP_FROM or SMTP_USER
-        msg["To"] = to_email
-        msg["Subject"] = subject
-        msg.attach(MIMEText(body, "plain"))
-
-        with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=10) as server:
-            server.starttls()
-            server.login(SMTP_USER, SMTP_PASSWORD)
-            server.send_message(msg)
-
-        logger.info(f"Email sent to {to_email}: {subject}")
+        payload = {
+            "from": "Calendly Clone <onboarding@resend.dev>",
+            "to": [to_email],
+            "subject": subject,
+            "text": body
+        }
+        
+        headers = {
+            "Authorization": f"Bearer {RESEND_API_KEY}",
+            "Content-Type": "application/json"
+        }
+        
+        response = httpx.post(
+            "https://api.resend.com/emails", 
+            json=payload, 
+            headers=headers,
+            timeout=10.0
+        )
+        
+        # Raise an exception if the API returns a 4xx or 5xx error
+        response.raise_for_status()
+        
+        logger.info(f"Email sent successfully to {to_email}: {subject}")
         return {"sent": True, "error": None}
-    except smtplib.SMTPAuthenticationError as e:
-        error_msg = f"SMTP Authentication failed: {e}"
-        logger.error(error_msg)
-        return {"sent": False, "error": error_msg}
-    except smtplib.SMTPException as e:
-        error_msg = f"SMTP error: {e}"
+        
+    except httpx.HTTPStatusError as e:
+        error_msg = f"Resend API HTTP Error: {e.response.status_code} - {e.response.text}"
         logger.error(error_msg)
         return {"sent": False, "error": error_msg}
     except Exception as e:
@@ -146,30 +148,27 @@ Calendly Clone"""
         "to": email,
         "subject": template["subject"],
         "notification_type": payload.notification_type,
-        "smtp_configured": SMTP_ENABLED,
-        "smtp_error": result.get("error"),
-        "message": "Email sent via SMTP" if result["sent"] else (
-            result.get("error") or "Email logged to console (configure SMTP in .env)"
+        "email_configured": EMAIL_ENABLED,
+        "api_error": result.get("error"),
+        "message": "Email sent via API" if result["sent"] else (
+            result.get("error") or "Email logged to console (configure RESEND_API_KEY in .env)"
         ),
     }
 
 
 @router.get("/test")
 def test_email():
-    """Test endpoint to verify SMTP configuration works."""
-    if not SMTP_ENABLED:
+    """Test endpoint to verify Resend API configuration works."""
+    if not EMAIL_ENABLED:
         return {
             "status": "not_configured",
-            "smtp_host": SMTP_HOST or "(empty)",
-            "smtp_user": SMTP_USER or "(empty)",
-            "smtp_password_set": bool(SMTP_PASSWORD),
-            "message": "SMTP is not configured. Fill SMTP_HOST, SMTP_USER, and SMTP_PASSWORD in .env",
+            "message": "Resend is not configured. Add RESEND_API_KEY in .env or settings to enable live emails.",
         }
-    result = send_email(SMTP_USER, "Calendly Clone - Test Email", "This is a test email from Calendly Clone. If you received this, SMTP is working correctly!")
+        
+    result = send_email("delivered@resend.dev", "Calendly Clone - Test Email", "This is a test email from Calendly Clone hitting the Resend API!")
+    
     return {
         "status": "sent" if result["sent"] else "failed",
-        "smtp_host": SMTP_HOST,
-        "smtp_port": SMTP_PORT,
-        "smtp_user": SMTP_USER,
+        "resend_key_length": len(RESEND_API_KEY),
         "error": result.get("error"),
     }
