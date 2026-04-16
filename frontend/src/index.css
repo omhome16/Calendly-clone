@@ -1,0 +1,57 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * { box-sizing: border-box; }
+  body {
+    font-family: 'Inter var', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Noto Sans', 'Helvetica Neue', Arial, sans-serif;
+    background-color: #f3f4f6;
+    color: #1d1f27;
+    font-size: 16px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Form input styling matching Calendly source */
+  /* Wrapped in :where() to maintain 0 specificity, allowing Tailwind utility classes to override these defaults */
+  :where(input[type="text"]),
+  :where(input[type="email"]),
+  :where(input[type="password"]),
+  :where(input[type="search"]),
+  :where(select),
+  :where(textarea) {
+    background-color: #fff;
+    border: 1px solid #6a7282;
+    padding: 8px 12px;
+    font-size: 14px;
+    line-height: 20px;
+    border-radius: 4px;
+    color: #1d1f27;
+    transition: border-color 0.15s cubic-bezier(0.4, 0, 0.2, 1),
+                box-shadow 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  :where(input)::placeholder,
+  :where(textarea)::placeholder {
+    color: #6a7282;
+  }
+
+  :where(input:focus),
+  :where(select:focus),
+  :where(textarea:focus) {
+    outline: none;
+    border-color: #155dfc;
+    box-shadow: 0 0 0 2px rgba(21, 93, 252, 0.2);
+  }
+
+  /* Checkbox styling */
+  input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    border-radius: 0px;
+    accent-color: #006BFF;
+  }
+}

@@ -1,0 +1,44 @@
+# Ignore everything in the root folder
+/*
+
+# -------------------
+# ALLOWED DIRECTORIES & FILES
+# -------------------
+!/frontend/
+!/backend/
+!/README.md
+!/.gitignore
+
+# -------------------
+# BACKEND IGNORES
+# -------------------
+backend/__pycache__/
+backend/**/*.pyc
+backend/venv/
+backend/env/
+backend/.env
+backend/*.sqlite3
+backend/app.db
+backend/.pytest_cache/
+
+# -------------------
+# FRONTEND IGNORES
+# -------------------
+frontend/node_modules/
+frontend/dist/
+frontend/build/
+frontend/.env
+frontend/.env.local
+frontend/.eslintcache
+frontend/coverage/
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log*
+
+# -------------------
+# OS/EDITOR FILES
+# -------------------
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
