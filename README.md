@@ -101,6 +101,7 @@ erDiagram
         Integer id PK
         String name
         String email
+        String username
         String timezone
     }
 
@@ -111,20 +112,26 @@ erDiagram
         String name
         String slug
         Integer duration
-        Integer max_per_day
+        String event_category 
         Integer buffer_before
         Integer buffer_after
+        Integer max_per_day
+        Integer schedule_days_ahead
+        Integer min_notice_hours
     }
 
     AvailabilitySchedule {
         Integer id PK
+        Integer user_id FK "-> User.id"
         String name
+        Boolean is_default
+        String timezone
         Integer meeting_limit_per_day
     }
 
     AvailabilityRule {
         Integer id PK
-        Integer schedule_id FK
+        Integer schedule_id FK "-> AvailabilitySchedule.id"
         SmallInteger day_of_week 
         Boolean is_available
         Time start_time
@@ -133,7 +140,7 @@ erDiagram
 
     DateOverride {
         Integer id PK
-        Integer schedule_id FK
+        Integer schedule_id FK "-> AvailabilitySchedule.id"
         Date override_date
         Boolean is_available
         Time start_time
@@ -144,11 +151,13 @@ erDiagram
 
     Booking {
         Integer id PK
-        Integer event_type_id FK
-        Integer rescheduled_from FK "Self reference"
-        String status "active, cancelled, rescheduled"
+        Integer event_type_id FK "-> EventType.id"
+        Integer rescheduled_from FK "-> Booking.id"
+        String status 
         DateTime start_time
         DateTime end_time
+        String invitee_email
+        String invitee_timezone
     }
 ```
 
